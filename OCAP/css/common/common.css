@@ -1,0 +1,84 @@
+﻿body {
+    min-width: 1300px;
+    /* font-family: '標楷體'; */
+}
+
+.header {
+    background-color: #282B35;
+    color: #fff;
+    width: 100%;
+    height: 60px;
+}
+
+.header img {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    height: 40px;
+}
+
+.header h1 {
+    font-size: 32px;
+    line-height: 60px;
+    text-align: center;
+}
+
+.header .menu {
+    position: absolute;
+    right: 10px;
+    top: 0px;
+    font-size: 14px;
+    height: 60px;
+    line-height: 60px;
+}
+
+.ivu-menu {
+    z-index: unset;
+}
+
+.searchArea {
+    padding: 10px 20px 0;
+}
+
+.searchArea .col {
+    float: left;
+    margin: 0 0 9px 0;
+}
+
+span.columnTitle {
+    /* color: #2db7f5; */
+    /* text-align-last: justify; */
+    padding: 0 4px;
+    text-align: center;
+    display: inline-block;
+    vertical-align: middle;
+    width: 100px;
+    height: 24px;
+    line-height: 24px;
+}
+
+.btnSearch {
+    margin-left: 10px;
+    width: 100px;
+}
+
+.page {
+    float: right;
+    text-align: right;
+    margin: 10px 10px 10px 0;
+}
+
+/* 清除浮動 */
+.clearfix:after {
+    content: ".";
+    display: block;
+    clear: both;
+    visibility: hidden;
+    line-height: 0;
+    height: 0;
+    font-size: 0;
+}
+
+.clearfix {
+    *zoom: 1;
+}

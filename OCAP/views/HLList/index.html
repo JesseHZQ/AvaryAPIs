@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<script src="../../assets/vue/vue.min.js"></script>
+	<script src="../../assets/vue-i18n/vue-i18n.js"></script>
+	<script src="../../js/common/lang/en.js"></script>
+	<script src="../../js/common/lang/zh.js"></script>
+	<script src="../../assets/axios/axios.min.js"></script>
+	<script src="../../assets/iview/iview.min.js"></script>
+	<script src="../../assets/iview/locale/zh-TW.js"></script>
+	<script src="../../assets/iview/locale/en-US.js"></script>
+	<script src="../../assets/babel-polyfill/polyfill.min.js"></script>
+	<script src="../../assets/form-create/form-create.min.js"></script>
+	<script src="../../assets/moment/moment.min.js"></script>
+	<script src="../../assets/echarts/echarts.min.js"></script>
+	<script src="../../assets/echarts/vue-echarts.min.js"></script>
+	<script src="../../js/common/common.js"></script>
+	<script src="./js/index.js"></script>
+	<link rel="stylesheet" href="../../assets/iview/styles/iview.css">
+	<link rel="stylesheet" href="../../css/common/common.css">
+	<link rel="stylesheet" href="./css/index.css">
+	<link rel="shortcut icon" href="../../img/Logo/Avary.png" type="image/x-icon">
+	<title>OCAP表單查詢</title>
+</head>
+
+<body>
+	<div id="app">
+		<div class="header">
+			<img src="../../img/Avary.png" alt="">
+			<Cascader style="float: right; margin: 14px 10px 0 0;" @on-change="onCascaderChange" :data="cascaderData" :value="cascaderValueLocal" :transfer="true"></Cascader>
+			<span style="float: right; line-height: 60px; font-size: 16px; margin-right: 10px;">廠區 / BU / 工廠 </span>
+			<h1 style="margin: 0 300px;">HL人員維護</h1>
+		</div>
+		<div>
+			<i-menu mode="horizontal" active-name="2">
+				<Menu-Item v-if="!item.isSub" v-for="(item, index) in config.menu" :name="item.name" :to="item.to">
+					{{ item.title }}
+				</Menu-Item>
+				<Submenu v-if="item.isSub" v-for="(item, index) in config.menu" :name="item.name">
+					<template slot="title">
+						{{ item.title }}
+					</template>
+					<Menu-Item v-for="(i, inx) in item.children" :name="i.name" :to="i.to">{{ i.title }}</Menu-Item>
+			</i-menu>
+			<i-button style="position: absolute; right: 10px; top: 74px;" type="error" @click="logout">退出登錄</i-button>
+			<p style="position: absolute; right: 120px; top: 80px;">你好，{{ userInfo.USERNAME }}</p>
+		</div>
+
+		<div style="width: 1300px; margin: 0 auto;">
+			<div class="searchArea clearfix">
+				<div class="col" v-for="(item, index) in searchColumns">
+					<span class="columnTitle">{{ item.title }}</span>
+					<i-input v-if="item.type == 'input'" size="small" type="text" v-model="searchModel[item.key]"
+						style="width: 140px;" clearable></i-input>
+					<i-select v-if="item.type == 'select'" size="small" v-model="searchModel[item.key]"
+						style="width: 140px;" filterable clearable>
+						<i-option v-for="(it, index) in dropDownList[item.key]" :value="it" :key="index">{{ it }}
+						</i-option>
+					</i-select>
+					<date-picker v-if="item.type == 'date'" @on-change="dateChange($event, item.key)"
+						:value="searchModel[item.key]" :transfer="true" size="small" format="yyyy/MM/dd"
+						style="width: 140px;"></date-picker>
+				</div>
+
+				<div class="col">
+					<i-button class="btnSearch" size="small" type="primary" @click="search">查詢</i-button>
+					<i-button class="btnSearch" size="small" type="success" @click="addShow = true">新增</i-button>
+					<!-- <i-button class="btnSearch" size="small" type="warning" @click="exportExcel" :loading="btnLoading">導出
+					</i-button> -->
+				</div>
+			</div>
+
+			<i-table style="margin: 0 30px;" border stripe :loading="tableLoading" size="small" :columns="columns"
+				:data="data"></i-table>
+
+			<Page class="page" :total="total" :page-size="PageSize" :current="PageIndex" @on-change="onPageChange"
+				@on-page-size-change="onPageSizePage" show-total show-sizer></Page>
+
+		</div>
+
+		<Modal v-model="addShow" title="HL人員添加">
+			<i-form ref="formValidate" :model="formValidate" :rules="ruleValidate" :label-width="90">
+				<Form-Item label="廠區">
+					<Cascader :data="cascaderData" :value="cascaderValue" disabled></Cascader>
+				</Form-Item>
+				<Form-Item label="異常類型" prop="V_YCTYPE">
+					<i-select v-model="formValidate.V_YCTYPE" filterable clearable>
+						<i-option v-for="(it, index) in dropDownList.V_YCTYPE" :value="it" :key="index">{{ it }}</i-option>
+					</i-select>
+				</Form-Item>
+				<Form-Item label="責任課別" prop="V_DUTY">
+					<i-input v-model="formValidate.V_DUTY"></i-input>
+				</Form-Item>
+				<Form-Item label="人員信息" prop="V_USERNAME">
+					<i-select v-model="formValidate.V_USERNAME" filterable clearable :remote-method="selectSearch"
+						:loading="selectLoading" placeholder="請至少輸入兩個關鍵字">
+						<i-option v-for="(it, index) in dropDownList.V_USERNAME" :value="it.value" :label="it.title"
+							:key="index">
+							<span>{{ it.title }}</span>
+							<span style="float: right; color:#ccc">{{ it.label }}</span>
+						</i-option>
+					</i-select>
+				</Form-Item>
+				<Form-Item label="第幾次HL">
+					<input-number v-model="formValidate.V_HLNUM" min="0" style="width: 100%;"></input-number>
+				</Form-Item>
+			</i-form>
+			<div slot="footer">
+				<i-button type="primary" long @click="add">確定新增</i-button>
+			</div>
+		</Modal>
+	</div>
+
+	<script>
+		var app = new Vue({
+			el: '#app',
+			data: {
+				userInfo: JSON.parse(localStorage.getItem('USERINFO')),
+				tableLoading: false,
+				btnLoading: false,
+				selectLoading: false,
+				addShow: false,
+				columns: [
+					{
+						title: '廠區',
+						key: 'V_FAC'
+					},
+					{
+						title: 'BU',
+						key: 'V_BU'
+					},
+					{
+						title: '工廠代碼',
+						key: 'V_FACID'
+					},
+					{
+						title: '異常類型',
+						key: 'V_YCTYPE'
+					},
+					{
+						title: '責任課別',
+						key: 'V_DUTY'
+					},
+					{
+						title: 'HL人員工號',
+						key: 'V_USERID'
+					},
+					{
+						title: 'HL用戶姓名',
+						key: 'V_USERNAME'
+					},
+					{
+						title: 'HL開始次數',
+						key: 'V_HLNUM'
+					},
+					{
+						title: 'Action',
+						width: 80,
+						align: 'center',
+						render: function (h, params) {
+							return h('div',
+								[
+									h('i-button', {
+										props: {
+											type: 'error',
+											size: 'small',
+											disabled: params.row.V_FAC == app.userInfo.V_FAC && params.row.V_BU == app.userInfo.V_BU && params.row.V_FACID == app.userInfo.V_FACID ? false : true,
+										},
+										style: {
+											display: 'block',
+											width: '70px',
+											margin: '5px 0'
+										},
+										on: {
+											click: function () {
+												app.$Modal.confirm({
+													title: '刪除確認',
+													content: '<p>是否確定要刪除該項內容？</p>',
+													onOk: function () {
+														app.delete(params.row.N_ID)
+													}
+												})
+											}
+										}
+									}, '刪除')
+								]
+							)
+						}
+					}
+				],
+				searchColumns: [
+					{
+						title: '異常類型',
+						key: 'V_YCTYPE',
+						type: 'select'
+					},
+					{
+						title: '責任課別',
+						key: 'V_DUTY',
+						type: 'input'
+					},
+					{
+						title: '人員工號',
+						key: 'V_USERID',
+						type: 'input'
+					},
+					{
+						title: '人員姓名',
+						key: 'V_USERNAME',
+						type: 'input'
+					}
+				],
+				data: [],
+				searchModel: {
+					V_FAC: localStorage.getItem('cascaderValue') ? JSON.parse(localStorage.getItem('cascaderValue'))[0] : 'SZ',
+					V_BU: localStorage.getItem('cascaderValue') ? JSON.parse(localStorage.getItem('cascaderValue'))[1] : 'FPC',
+					V_FACID: localStorage.getItem('cascaderValue') ? JSON.parse(localStorage.getItem('cascaderValue'))[2] : 'SZ01'
+				},
+				dropDownList: {
+					V_DUTY: [],
+					V_YCTYPE: [],
+					V_USERNAME: []
+				},
+				PageIndex: 1,
+				PageSize: 20,
+				total: 0,
+				cascaderData: [],
+				cascaderValue: JSON.parse(localStorage.getItem('USERINFO')) ? [JSON.parse(localStorage.getItem('USERINFO')).V_FAC, JSON.parse(localStorage.getItem('USERINFO')).V_BU, JSON.parse(localStorage.getItem('USERINFO')).V_FACID] : ['SZ', 'FPC', 'SZ01'],
+				cascaderValueLocal: JSON.parse(localStorage.getItem('cascaderValue')) || ['SZ', 'FPC', 'SZ01'],
+				formValidate: {},
+				ruleValidate: {
+					V_YCTYPE: [
+						{
+							required: true,
+							message: '異常類型不能為空！',
+							trigger: 'change'
+						}
+					],
+					V_DUTY: [
+						{
+							required: true,
+							message: '責任課別不能為空！',
+							trigger: 'change'
+						}
+					],
+					V_USERNAME: [
+						{
+							required: true,
+							message: '人員信息不能為空！',
+							trigger: 'change'
+						}
+					],
+				}
+			},
+
+			created: function () {
+				if (!this.userInfo) {
+					alert('請先登錄！')
+					location.href = '../../index.html'
+				}
+				else {
+					this.getData()
+					this.getDDLData()
+					this.getCascaderData()
+				}
+			},
+
+			methods: {
+				// 获取OCAP列表数据
+				getData: function () {
+					var that = this
+					that.data = []
+					that.tableLoading = true
+					axios.post(config.baseUrl + 'HL/GetList?pageIndex=' + that.PageIndex + '&pageSize=' + that.PageSize, that.searchModel).then(function (res) {
+						that.total = res.data.Total
+						that.data = res.data.Data
+						that.tableLoading = false
+					})
+				},
+
+				// 获取下拉菜单数据
+				getDDLData: function () {
+					var that = this
+					axios.post(config.baseUrl + 'Param/GetYCTYPEList', that.searchModel).then(function (res) {
+						var list = []
+						res.data.forEach(function (i) {
+							list.push(i.V_PARAMVALUE)
+						})
+						that.dropDownList.V_YCTYPE = list
+					})
+				},
+
+				// 获取联级选择数据
+				getCascaderData: function () {
+					var that = this
+					axios.get(config.baseUrl + 'Param/GetCascaderList').then(function (res) {
+						var obj = []
+						res.data.forEach(function (i) {
+							if (i.V_PARAMDESC == '廠區') {
+								var loc = {
+									label: i.V_PARAMVALUE,
+									value: i.V_PARAMVALUE,
+									children: []
+								}
+								obj.push(loc)
+							}
+						})
+						res.data.forEach(function (i) {
+							if (i.V_PARAMDESC == 'BU') {
+								var bu = {
+									label: i.V_PARAMVALUE,
+									value: i.V_PARAMVALUE,
+									children: []
+								}
+								obj.forEach(function (j) {
+									if (i.V_FAC == j.value) {
+										j.children.push(bu)
+									}
+								})
+							}
+						})
+						res.data.forEach(function (i) {
+							if (i.V_PARAMDESC == 'FACID') {
+								var fac = {
+									label: i.V_PARAMVALUE,
+									value: i.V_PARAMVALUE
+								}
+								obj.forEach(function (j) {
+									if (i.V_FAC == j.value) {
+										j.children.forEach(function (k) {
+											if (i.V_BU == k.value) {
+												k.children.push(fac)
+											}
+										})
+									}
+								})
+							}
+						})
+						that.cascaderData = obj
+					})
+				},
+
+				// 點擊搜索按鈕的方法 回到第一頁
+				search: function () {
+					this.PageIndex = 1
+					this.getData()
+				},
+
+				// 人員搜索
+				selectSearch: function (query) {
+					var that = this
+					if (query && query.length >= 2) {
+						that.selectLoading = true
+						axios.get(config.baseUrl + 'Login/GetUser?key=' + query).then(function (res) {
+							var list = []
+							res.data.forEach(function (i) {
+								list.push({
+									title: i.V_NAME,
+									value: i.V_NAME + ' - ' + i.V_EMPID,
+									label: i.V_EMPID + ' - ' + i.V_DEPTNAME
+								})
+							})
+							that.dropDownList.V_USERNAME = list
+							that.selectLoading = false
+						})
+					} else {
+						that.dropDownList.V_USERNAME = []
+					}
+				},
+
+				// 人員添加
+				add: function () {
+					var that = this
+					this.$refs['formValidate'].validate(function (valid) {
+						if (valid) {
+							axios.post(config.baseUrl + 'HL/Add', {
+								V_FAC: that.cascaderValue[0],
+								V_BU: that.cascaderValue[1],
+								V_FACID: that.cascaderValue[2],
+								V_DUTY: that.formValidate.V_DUTY,
+								V_YCTYPE: that.formValidate.V_YCTYPE,
+								V_USERID: that.formValidate.V_USERNAME.split('-')[1].trim(),
+								V_USERNAME: that.formValidate.V_USERNAME.split('-')[0].trim(),
+								V_OPER: that.userInfo.USERID,
+								V_HLNUM: that.formValidate.V_HLNUM ? that.formValidate.V_HLNUM : 1
+							}).then(function (res) {
+								that.addShow = false
+								that.getData()
+								that.$Message.success(res.data)
+							})
+						} else {
+							that.$Message.error('Fail!');
+						}
+					})
+				},
+
+				// 頁碼改變事件
+				onPageChange: function (page) {
+					this.PageIndex = page
+					this.getData()
+				},
+
+				// 分頁條數改變事件
+				onPageSizePage: function (pageSize) {
+					this.PageSize = pageSize
+					this.getData()
+				},
+
+				// 厂区选择事件
+				onCascaderChange: function (value) {
+					this.searchModel.V_FAC = value[0]
+					this.searchModel.V_BU = value[1]
+					this.searchModel.V_FACID = value[2]
+					this.search()
+					this.getDDLData()
+					localStorage.setItem('cascaderValue', JSON.stringify(value))
+				},
+
+				// 刪除
+				delete: function (delId) {
+					var that = this
+					axios.post(config.baseUrl + 'HL/Del?id=' + delId, that.userInfo).then(function (res) {
+						that.$Message.info(res.data)
+						that.getData()
+					})
+				},
+
+				// 导出Excel
+				exportExcel: function () {
+					location.href = config.baseUrl + 'Detail/CreateExcel?param=' + JSON.stringify(this.searchModel)
+				},
+
+				logout: function () {
+					localStorage.removeItem('USERINFO');
+					location.href = '../../index.html'
+				}
+			}
+		})
+	</script>
+</body>
+
+</html>

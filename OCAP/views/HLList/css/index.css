@@ -1,0 +1,30 @@
+.ivu-table-cell {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.ivu-table th {
+    height: auto;
+}
+
+.ivu-table td {
+    height: 28px;
+}
+
+.ivu-table th {
+    background: none;
+}
+
+.ivu-table thead tr {
+    color: #fff;
+    background: linear-gradient(to right, #2d8cf0, #19be6b);
+    /* background:  #2d8cf0; */
+}
+
+.ivu-table-header thead tr th {
+    /* padding: 0; */
+}
+
+.ivu-table .ivu-btn-small {
+    font-size: 12px;
+}

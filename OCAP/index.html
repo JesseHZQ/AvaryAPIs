@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<script src="./assets/vue/vue.min.js"></script>
+	<script src="./assets/axios/axios.min.js"></script>
+	<script src="./assets/iview/iview.min.js"></script>
+	<script src="./assets/iview/locale/zh-TW.js"></script>
+	<script src="./assets/babel-polyfill/polyfill.min.js"></script>
+	<script src="./js/common/common.js"></script>
+	<link rel="stylesheet" href="./assets/iview/styles/iview.css">
+	<link rel="stylesheet" href="./css/common/common.css">
+	<link rel="shortcut icon" href="./img/Logo/Avary.png" type="image/x-icon">
+	<style>
+		.bg {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: url('./img/bg.jpg') no-repeat #000;
+			background-size: cover;
+			z-index: -1;
+		}
+
+		.login {
+			width: 400px;
+			height: 440px;
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%);
+			border-radius: 8px;
+			padding: 20px;
+			background-color: rgba(255, 255, 255, .7);
+		}
+
+		.login .logo {
+			height: 40px;
+			margin-bottom: 20px;
+		}
+
+		.login .title {
+			font-size: 28px;
+			font-weight: 700;
+			margin-bottom: 20px;
+			color: cadetblue;
+		}
+
+		.errorMsg {
+			width: 100%;
+			position: absolute;
+			bottom: -2px;
+			left: 50%;
+			transform: translateX(-50%);
+			color: #f00;
+		}
+	</style>
+	<title>OCAP系統</title>
+</head>
+
+<body>
+	<div id="app">
+		<div class="bg">
+			<div class="login">
+				<div style="text-align: center;">
+					<img class="logo" src="./img/Avary.png" alt="" srcset="">
+					<p class="title">OCAP 系統</p>
+
+					<i-form style="position: relative;" ref="form" :model="formData" label-width="60">
+						<form-item label="用戶名" prop="user">
+							<i-input ref="username" type="text" v-model="formData.USERID" placeholder="Username">
+								<Icon type="ios-person-outline" slot="prepend"></Icon>
+							</i-input>
+						</form-item>
+						<form-item label="密碼" prop="password">
+							<i-input ref="password" type="password" v-model="formData.MD_PWD" placeholder="Password">
+								<Icon type="ios-lock-outline" slot="prepend"></Icon>
+							</i-input>
+						</form-item>
+						<form-item label="厂区" prop="password">
+							<Cascader @on-change="onCascaderChange" :change-on-select="true" :data="cascaderData" :value="cascaderValue"
+								:transfer="true"></Cascader>
+						</form-item>
+						<i-button style="margin-bottom: 20px;" type="primary" :loading="loginLoading" long
+							@click="login">{{ loginMsg }}
+						</i-button>
+						<p v-show="isError" class="errorMsg">{{ errorMsg }}</p>
+					</i-form>
+					<p style="margin-bottom: 10px;">技術支持:<span style="font-weight: 700; color: coral;">資訊科技處</span></p>
+					<p>系統維護:<span style="font-weight: 700; color: coral;">賀志強</span> 分機: <span
+							style="font-weight: 700; color: coral;">5071-17867</span></p>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		iview.lang('zh-TW');
+
+		var app = new Vue({
+			el: '#app',
+			data: {
+				cascaderData: [],
+				cascaderValue: JSON.parse(localStorage.getItem('cascaderValue')) || ['SZ', 'FPC', 'SZ01'],
+				isError: false,
+				errorMsg: '',
+				loginLoading: false,
+				loginMsg: '登 錄',
+				formData: {
+					USERID: '',
+					MD_PWD: ''
+				}
+			},
+
+			created: function () {
+				this.getCascaderData()
+			},
+
+			mounted: function () {
+				this.$refs["username"].focus()
+			},
+
+			methods: {
+				login: function () {
+					var that = this
+					that.formData.USERID = that.formData.USERID.trim()
+					that.formData.MD_PWD = that.formData.MD_PWD.trim()
+					if (that.formData.USERID && that.formData.MD_PWD) {
+						that.errorMsg = ''
+						that.loginLoading = true
+						that.loginMsg = '登錄中'
+
+						setTimeout(function () {
+							that.loginLoading = false
+							axios.get(config.baseUrl + 'Login/Login?userid=' + that.formData.USERID).then(function (res) {
+								that.loginLoading = false
+								if (res.data) {
+									that.loginMsg = '登錄成功, 正在跳轉...'
+									var info = res.data
+									localStorage.setItem('USERINFO', JSON.stringify(info))
+									// var V_FAC = localStorage.getItem('cascaderValue') ? JSON.parse(localStorage.getItem('cascaderValue'))[0] : 'SZ'
+									// var V_BU = localStorage.getItem('cascaderValue') ? JSON.parse(localStorage.getItem('cascaderValue'))[1] : 'FPC'
+									// var V_FACID = localStorage.getItem('cascaderValue') ? JSON.parse(localStorage.getItem('cascaderValue'))[2] : 'SZ01'
+									// document.cookie = 'OCAPCookie=userid=' + info.USERID + '&username=' + info.USERNAME + '&fac=' + V_FAC + '&bu=' + V_BU + '&facid=' + V_FACID + '&Pass=Y;path=/'
+									setTimeout(function () {
+										location.href = "views/OCAPList/index.html"
+									}, 500)
+								}
+								else {
+									that.isError = true
+									that.formData.MD_PWD = ''
+									that.loginMsg = '登錄'
+									that.errorMsg = '帳號或者密碼錯誤, 請重試！'
+									that.$refs["password"].focus()
+								}
+							})
+						}, 500);
+					}
+					else {
+						that.isError = true
+						that.errorMsg = '請輸入正確的帳號和密碼！'
+						that.$refs["username"].focus()
+					}
+				},
+
+				// 获取联级选择数据
+				getCascaderData: function () {
+					var that = this
+					axios.get(config.baseUrl + 'Param/GetCascaderList').then(function (res) {
+						var obj = []
+						res.data.forEach(function (i) {
+							if (i.V_PARAMDESC == '廠區') {
+								var loc = {
+									label: i.V_PARAMVALUE,
+									value: i.V_PARAMVALUE,
+									children: []
+								}
+								obj.push(loc)
+							}
+						})
+						res.data.forEach(function (i) {
+							if (i.V_PARAMDESC == 'BU') {
+								var bu = {
+									label: i.V_PARAMVALUE,
+									value: i.V_PARAMVALUE,
+									children: []
+								}
+								obj.forEach(function (j) {
+									if (i.V_FAC == j.value) {
+										j.children.push(bu)
+									}
+								})
+							}
+						})
+						res.data.forEach(function (i) {
+							if (i.V_PARAMDESC == 'FACID') {
+								var fac = {
+									label: i.V_PARAMVALUE,
+									value: i.V_PARAMVALUE
+								}
+								obj.forEach(function (j) {
+									if (i.V_FAC == j.value) {
+										j.children.forEach(function (k) {
+											if (i.V_BU == k.value) {
+												k.children.push(fac)
+											}
+										})
+									}
+								})
+							}
+						})
+						that.cascaderData = obj
+					})
+				},
+
+				// 联级菜单改变事件
+				onCascaderChange: function (value) {
+					localStorage.setItem('cascaderValue', JSON.stringify(value))
+				},
+			}
+		})
+	</script>
+</body>
+
+</html>
